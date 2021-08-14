@@ -1,0 +1,56 @@
+version: '3.1'
+
+services:
+  postgres:
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: $PG_USER
+      POSTGRES_PASSWORD: $PG_PASSWORD
+      POSTGRES_DB: $PG_DATABASE
+    image: postgres:latest
+    ports:
+      - 5432:5432
+    volumes:
+      - pgdata:/var/lib/postgresql/data/
+    networks:
+      - botnet
+
+  tgbot:
+    container_name: bot
+    build:
+      context: .
+    command: python run.py
+    volumes:
+      - .:/src
+    networks:
+      - botnet
+    restart: always
+    env_file:
+      - ".env"
+    # Бот стартует после запуска базы
+    depends_on:
+      - postgres
+      - redis
+      - django
+
+  redis:
+    restart: always
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    networks:
+      - botnet
+
+# указываются используемые сети
+networks:
+  botnet:
+    # указывается драйвер сети
+    driver: bridge
+
+
+volumes:
+  pgdata:
+  redisdata:
