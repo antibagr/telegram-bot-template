@@ -1,21 +1,17 @@
-import logging
 import asyncio
-from typing import Optional, Union
+import typing
 
-from aiogram import types
-from aiogram.utils.exceptions import RetryAfter, MessageIsTooLong, CantParseEntities
-from aiogram.utils.parts import safe_split_text
-from aiogram.utils.markdown import quote_html
+import aiogram
+from loguru import logger
 
 from loader import bot
 
-from config import MAGIC_ID, ERROR_CHAT_ID
-from interface.verbose import msg
-from exceptions import NotAuthorizedError
-from utils.exception_utils import exception_to_string, log
+from settings import settings
+from interface.text import msg
+from utils.exception_utils import exception_to_string
 
 
-async def notify_user(update: types.Update, exp: Exception) -> None:
+async def notify_user(update: aiogram.types.Update) -> None:
     if update.message:
         trg = update.message
     elif update.callback_query:
@@ -23,47 +19,60 @@ async def notify_user(update: types.Update, exp: Exception) -> None:
     elif update.edited_message:
         trg = update.edited_message
     else:
-        logging.error(f"Unknown sourse\n\n{str(update)}")
+        logger.error(f'Unknown sourse:\n\n{str(update)}')
         return None
-
-    if isinstance(exp, NotAuthorizedError):
-        await trg.answer(msg.err.not_authorized)
-    else:
-        await trg.answer(msg.err.default_error_answer)
+    await trg.answer(msg.err.default_error_answer)
 
 
-async def send_exception(exp: Exception, header: Optional[Union[types.Update, dict, str]] = None) -> Optional[types.Message]:
-    """
-    Send exception details to the person with id defined in MAGIC_ID variable
+async def send_exception_to_chat(
+        text: str
+) -> typing.Optional[aiogram.types.Message]:
+    '''
+    Some description required.
+    '''
+    try:
+        return await bot.send_message(
+            chat_id=settings.ERROR_CHAT_ID,
+            text=text,
+        )
+    except aiogram.utils.exceptions.RetryAfter as exc:
+        logger.error(
+            'Cannot send exception details.'
+            f'Flood limit is exceeded. Sleep {exc.timeout} seconds.'
+        )
+        await asyncio.sleep(exc.timeout)
+        return await send_exception_to_chat(text)
+    except aiogram.utils.exceptions.CantParseEntities:
+        return await send_exception_to_chat(
+            aiogram.utils.markdown.quote_html(text)
+        )
+
+
+async def send_exception(
+        exp: Exception,
+        header: typing.Union[None, aiogram.types.Update, dict, str] = None,
+) -> typing.Optional[aiogram.types.Message]:
+    '''
+    Send exception details to the person ERROR_CHAT_ID if set
 
     :param Exception exp: Exception that will be sent
     :param Optional[Union[types.Update, dict, str]] header: . Optional header of message
     :returns: Sent message on success
-    """
+    '''
 
-    async def _send_exception(text: str) -> Optional[types.Message]:
+    logger.exception(str(exp), exc_info=True)
 
-        try:
-            return await bot.send_message(ERROR_CHAT_ID, text)
-        except RetryAfter as e:
-            logging.error(f"Cannot send exception details. Flood limit is exceeded. Sleep {e.timeout} seconds.")
-            await asyncio.sleep(e.timeout)
-            return await _send_exception(text)
-        except CantParseEntities:
-            return await _send_exception(quote_html(text))
+    if not settings.ERROR_CHAT_ID:
+        return
 
     header = header or exp.__class__.__name__
-
     err: str = exception_to_string(exp, header)
 
-    log(exp)
-
     try:
-        return await _send_exception(err)
-    except MessageIsTooLong:
-        for part in safe_split_text(err):
-            last_message = await _send_exception(part)
+        return await send_exception_to_chat(err)
+    except aiogram.utils.exceptions.MessageIsTooLong:
+        for part in aiogram.utils.parts.safe_split_text(err):
+            last_message = await send_exception_to_chat(part)
         return last_message
-
-    except Exception as sending_exp:
-        logging.exception(sending_exp, exc_info=True)
+    except Exception as send_exc:
+        logger.exception(send_exc, exc_info=True)

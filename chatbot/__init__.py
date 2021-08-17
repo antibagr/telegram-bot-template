@@ -1,14 +1,5 @@
-import os
 import sys
+import pathlib
 
-from pathlib import Path
-
-BASE_DIR = Path(os.path.abspath(os.path.dirname(__file__)))
-
-
-# root
-sys.path.append(os.path.join(BASE_DIR.resolve().parent.parent, ''))
-# locbot
-sys.path.append(os.path.join(BASE_DIR.resolve().parent, ''))
-# chatbot
-sys.path.append(os.path.join(BASE_DIR.resolve(), ''))
+BASE_DIR = pathlib.Path(__file__).resolve().parent
+sys.path.append(str(BASE_DIR))

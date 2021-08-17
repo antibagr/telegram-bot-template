@@ -5,20 +5,29 @@ import asyncio
 import logging
 import aiogram
 # from aiogram.contrib.fsm_storage.memory import MemoryStorage
-from aiogram.contrib.fsm_storage.redis import RedisStorage2
+# from aiogram.contrib.fsm_storage.redis import RedisStorage2
+from aiogram.contrib.fsm_storage.memory import MemoryStorage
+from loguru import logger
 
-from config import BOT_TOKEN, REDIS_HOST
-from utils.wrap import bake
-
-
-logging.getLogger('aiogram').setLevel(logging.INFO)
-logging.getLogger('root').setLevel(logging.DEBUG)
+from settings import settings
+from load.patcher import patch_dispatcher
 
 
-bot = aiogram.Bot(token=BOT_TOKEN, parse_mode=aiogram.types.ParseMode.HTML)
+logger.add('chatbot.log', level='INFO')
 
-storage = RedisStorage2()
-dp = aiogram.Dispatcher(bot, storage=storage)
+bot = aiogram.Bot(
+    token=settings.BOT_TOKEN,
+    parse_mode=aiogram.types.ParseMode.HTML
+)
+# if settings.REDIS_HOST == '':
+if True:
+    storage = MemoryStorage()
+else:
+    storage = RedisStorage2(
+            host=settings.REDIS_HOST,
+            port=settings.REDIS_PORT,
+    )
 
-dp.message_handler = bake(dp.message_handler)
-dp.callback_query_handler = bake(dp.callback_query_handler)
+dp = patch_dispatcher(
+    aiogram.Dispatcher(bot, storage=storage)
+)

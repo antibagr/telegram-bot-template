@@ -1,4 +1,5 @@
 aioredis
 aiogram
-python-dotenv
 telethon
+pydantic[dotenv]
+loguru

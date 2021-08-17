@@ -1,19 +1,19 @@
-from aiogram import types
-from aiogram.dispatcher.handler import SkipHandler
+import aiogram
 
-from loader import dp
-
-from interface.verbose import msg, bot_private_commands
+from interface.text import msg
+from utils.telegram import get_command_name
 
 
-@dp.message_handler(commands=bot_private_commands, state='*')
-async def private_command_called_from_public_chat(message: types.Message) -> None:
+async def private_command_called_from_public_chat(
+    message: aiogram.types.Message,
+) -> None:
     """
-    Called when somebody tries to call private command from group / supergroup / channel
+    Called when somebody tries to call private
+    command from group / supergroup / channel
     """
-
-    if message.from_user and message.from_user.id == message.chat.id:
-        # called from private chat
-        raise SkipHandler()
-
-    await message.reply(msg.command_is_private.format(command=message.text), disable_web_page_preview=True)
+    await message.reply(
+        msg.command_is_private.format(
+            command=get_command_name(message.text)
+        ),
+        disable_web_page_preview=True,
+    )

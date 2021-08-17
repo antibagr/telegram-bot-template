@@ -1,8 +1,15 @@
-version: '3.1'
+version: '3.9'
+
+networks:
+  chatbot_network:
+
+volumes:
+  postgres_data:
+  redis_data:
 
 services:
   postgres:
-    container_name: postgres
+    container_name: chatbot-postgres
     restart: always
     environment:
       POSTGRES_USER: $PG_USER
@@ -12,45 +19,34 @@ services:
     ports:
       - 5432:5432
     volumes:
-      - pgdata:/var/lib/postgresql/data/
+      - postgres_data:/var/lib/postgresql/data/
     networks:
-      - botnet
+      - chatbot_network
 
-  tgbot:
-    container_name: bot
+  bot:
+    container_name: ${container_name}
     build:
       context: .
-    command: python run.py
+      dockerfile: Dockerfile
+    command: python chatbot
     volumes:
-      - .:/src
+      - .:/home/app
     networks:
-      - botnet
+      - chatbot_network
     restart: always
     env_file:
-      - ".env"
-    # Бот стартует после запуска базы
+      - '.env'
     depends_on:
       - postgres
       - redis
-      - django
 
   redis:
+    container_name: chatbot-redis
     restart: always
     image: redis:latest
     ports:
-      - "6379:6379"
+      - 6379:6379
     volumes:
-      - redisdata:/data
+      - redis_data:/data
     networks:
-      - botnet
-
-# указываются используемые сети
-networks:
-  botnet:
-    # указывается драйвер сети
-    driver: bridge
-
-
-volumes:
-  pgdata:
-  redisdata:
+      - chatbot_network
