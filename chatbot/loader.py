@@ -1,12 +1,8 @@
 """
 Module where so-called reusable global objects are initialized
 """
-import asyncio
-import logging
 import aiogram
-# from aiogram.contrib.fsm_storage.memory import MemoryStorage
-# from aiogram.contrib.fsm_storage.redis import RedisStorage2
-from aiogram.contrib.fsm_storage.memory import MemoryStorage
+from aiogram.contrib.fsm_storage import memory, redis
 from loguru import logger
 
 from settings import settings
@@ -19,13 +15,13 @@ bot = aiogram.Bot(
     token=settings.BOT_TOKEN,
     parse_mode=aiogram.types.ParseMode.HTML
 )
-# if settings.REDIS_HOST == '':
-if True:
-    storage = MemoryStorage()
+if settings.REDIS_HOST == '':
+    storage = memory.MemoryStorage()
 else:
-    storage = RedisStorage2(
+    storage = redis.RedisStorage2(
             host=settings.REDIS_HOST,
             port=settings.REDIS_PORT,
+            prefix='chatbot',
     )
 
 dp = patch_dispatcher(

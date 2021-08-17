@@ -1,4 +1,4 @@
-aioredis
+aioredis==1.2.0
 aiogram
 telethon
 pydantic[dotenv]
